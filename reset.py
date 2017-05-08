@@ -140,12 +140,14 @@ def maximize(X, R, K):
         sum_RX2 = np.dot(np.array(R[:, k]), np.array(X[:, 1]))
 
         mu.append([sum_RX1 / sum_R, sum_RX2 / sum_R])
-
+        '''
         sum_RX1M = np.sum(np.dot(np.dot(np.array(R[:, k]), np.array(X[:, 0])), np.array(X[:, 0]).T))
         sum_RX2M = np.sum(np.dot(np.dot(np.array(R[:, k]), np.array(X[:, 1])), np.array(X[:, 1]).T))
 
         sigma.append([(sum_RX1M / sum_R) - (np.array(mu[k]) * np.array(mu[k]).T),
                       (sum_RX2M / sum_R) - (np.array(mu[k]) * np.array(mu[k]).T)])
+        '''
+        
 
     return (np.array(mu), np.array(sigma), np.array(pi))
 
