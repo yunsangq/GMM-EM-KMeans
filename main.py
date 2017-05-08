@@ -87,7 +87,7 @@ def kmeans(X, theta):
         for i in range(len(X)):
             d = []
             for k in range(K):
-                d.append( np.sqrt( (X[i][0]-mu[k][0])**2 + (X[i][1]-mu[k][1])**2 ) )
+                d.append(np.sqrt((X[i][0]-mu[k][0])**2 + (X[i][1]-mu[k][1])**2))
             labels[i] = np.argmin(d)
 
         if np.array_equal(labels, labels_old):
@@ -100,13 +100,12 @@ def expected_complete_LL(X, R, K, theta):
     ll = 0
     mu, sigma, pi = theta
 
-    a = 0.0
-    b = 0.0
     for i in range(len(X)):
+        tmp = 0.0
         for k in range(K):
-            a += R[i][k] * np.log(pi[k])
-            b += R[i][k] * np.log(gaussian(mu[k], sigma[k], X[i]))
-    ll = a + b
+            tmp += R[i][k]*np.log(pi[k]) + R[i][k]*np.log(gaussian(mu[k], sigma[k], X[i]))
+        ll += tmp
+
     return ll
 
 
@@ -169,31 +168,47 @@ def EM(X, K, init_theta):
         if np.abs(LL - LL_old) < 0.1:
             break
 
-    return LL, theta, R
+    global best_R
+    global best_theta
+    global best_LL
+    global best_K
+    best_LL.append(LL)
+    best_R.append(R)
+    best_theta.append(theta)
+    best_K.append(K)
+    #print(LL)
+    return LL
+
+best_R = []
+best_theta = []
+best_LL = []
+best_K = []
 
 
 def find_best_k(X):
-    best_LL = []
-    best_theta = []
-    best_K = []
-    best_R = []
+    '''
+    K = 3
+    init_theta = get_initial_random_state(X, K)
+    init_theta = kmeans(X, init_theta)
+    LL = EM(X, K, init_theta)
 
+    best_LL = LL
+    best_K = K
+    '''
     for K in range(2, 8):
         init_theta = get_initial_random_state(X, K)
         init_theta = kmeans(X, init_theta)
-        LL, theta, R = EM(X, K, init_theta)
-        print(LL)
-        best_LL.append(LL)
-        best_K.append(K)
-        best_R.append(R)
-        best_theta.append(theta)
+        LL = EM(X, K, init_theta)
 
+    global best_R
+    global best_theta
+    global best_LL
+    global best_K
     argmax = np.argmax(np.array(best_LL))
     best_LL = best_LL[argmax]
     best_theta = best_theta[argmax]
     best_R = best_R[argmax]
     best_K = best_K[argmax]
-    # print(best_K)
 
     return best_K, best_theta, best_LL, best_R
 
