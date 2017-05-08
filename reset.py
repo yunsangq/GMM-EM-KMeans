@@ -3,8 +3,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.linalg as linalg
 import copy
+import numpy.linalg as linalg
 # import elice_utils
 import math
 
@@ -50,7 +50,7 @@ def get_initial_random_state(X, K):
         mu.append([x1, x2])
         sigma.append([[1, 0],
                       [0, 1]])
-        pi.append(1.0 / K)
+        pi.append(1 / K)
 
     mu = np.array(mu)
     sigma = np.array(sigma)
@@ -59,6 +59,9 @@ def get_initial_random_state(X, K):
 
 
 def kmeans(X, theta):
+    mu, sigma, pi = theta
+    K = len(mu)
+
     mu, sigma, pi = theta
     K = len(mu)
 
@@ -71,7 +74,7 @@ def kmeans(X, theta):
         for i in range(len(X)):
             d = []
             for j in range(K):
-                d.append(np.sqrt((X1[i] - mu[j][0])**2 + (X2[i] - mu[j][1])**2))
+                d.append(np.sqrt((X1[i] - mu[j][0]) ** 2 + (X2[i] - mu[j][1]) ** 2))
             d = np.array(d)
             labels.append(np.argmin(d))
 
@@ -95,13 +98,14 @@ def kmeans(X, theta):
 
 
 def expected_complete_LL(X, R, K, theta):
-    ll = 0.0
+    ll = 0
+    '''
     mu, sigma, pi = theta
 
     for i in range(len(X)):
         for k in range(K):
             ll += np.log(pi[k] * gaussian(mu[k], sigma[k], X[i]))
-
+    '''
     return ll
 
 
@@ -109,6 +113,7 @@ def expect(X, theta):
     # unpack
     mu, sigma, pi = theta
     R = []
+
     K = len(mu)
 
     for i in range(len(X)):
@@ -117,6 +122,7 @@ def expect(X, theta):
             tmp.append((pi[k] * gaussian(mu[k], sigma[k], X[i])) \
                        / sum([pi[k_] * gaussian(mu[k_], sigma[k_], X[i]) for k_ in range(K)]))
         R.append(tmp)
+
     return np.array(R)
 
 
@@ -138,17 +144,16 @@ def maximize(X, R, K):
         sum_RX1M = np.sum(np.dot(np.dot(np.array(R[:, k]), np.array(X[:, 0])), np.array(X[:, 0]).T))
         sum_RX2M = np.sum(np.dot(np.dot(np.array(R[:, k]), np.array(X[:, 1])), np.array(X[:, 1]).T))
 
-        sigma.append([(sum_RX1M / sum_R) - (np.array(mu[k])*np.array(mu[k]).T),
-                      (sum_RX2M / sum_R) - (np.array(mu[k])*np.array(mu[k]).T)])
+        sigma.append([(sum_RX1M / sum_R) - (np.array(mu[k]) * np.array(mu[k]).T),
+                      (sum_RX2M / sum_R) - (np.array(mu[k]) * np.array(mu[k]).T)])
 
     return (np.array(mu), np.array(sigma), np.array(pi))
 
 
 def EM(X, K, init_theta):
     LL = 0
-    theta = copy.deepcopy(init_theta)
 
-    theta = kmeans(X, theta)
+    theta = copy.deepcopy(init_theta)
 
     while True:
         LL_old = copy.deepcopy(LL)
@@ -163,24 +168,16 @@ def EM(X, K, init_theta):
 
 
 def find_best_k(X):
-    LLs = []
-    thetas = []
-    Rs = []
-    Ks = []
+    best_LL = None
+    best_theta = None
+    best_K = None
+    best_R = None
 
-    for K in range(2, 5):
-        theta = get_initial_random_state(X, K)
-        LL, theta, R = EM(X, K, theta)
-        LLs.append(LL)
-        thetas.append(theta)
-        Rs.append(R)
-        Ks.append(K)
+    for K in range(2, 8):
+        init_theta = get_initial_random_state(X, K)
+        init_theta = kmeans(X, init_theta)
+        LL = EM(X, K, init_theta)
 
-    argmax = np.argmax(np.array(LLs))
-    best_K = Ks[argmax]
-    best_theta = thetas[argmax]
-    best_LL = LLs[argmax]
-    best_R = Rs[argmax]
     return best_K, best_theta, best_LL, best_R
 
 
@@ -200,7 +197,7 @@ def draw_dataset(X, R):
     plt.gca().spines['right'].set_visible(False)
     plt.gca().spines['bottom'].set_color('#999999')
     plt.gca().spines['left'].set_color('#999999')
-    plt.xlabel('x1', fontsize=20, color='#555555')
+    plt.xlabel('x1', fontsize=20, color='#555555');
     plt.ylabel('x2', fontsize=20, color='#555555')
     plt.tick_params(axis='x', colors='#777777')
     plt.tick_params(axis='y', colors='#777777')
