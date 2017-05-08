@@ -3,9 +3,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.linalg as linalg
 import copy
-# import elice_utils
+import numpy.linalg as linalg
+#import elice_utils
 import math
 
 
@@ -50,7 +50,7 @@ def get_initial_random_state(X, K):
         mu.append([x1, x2])
         sigma.append([[1, 0],
                       [0, 1]])
-        pi.append(1.0 / K)
+        pi.append(1 / K)
 
     mu = np.array(mu)
     sigma = np.array(sigma)
@@ -62,46 +62,51 @@ def kmeans(X, theta):
     mu, sigma, pi = theta
     K = len(mu)
 
-    X1 = X[:, 0]
-    X2 = X[:, 1]
+    labels = np.zeros(len(X))
 
+    for i in range(len(X)):
+        d = []
+        for k in range(K):
+            d.append(np.sqrt((X[i][0] - mu[k][0]) ** 2 + (X[i][1] - mu[k][1]) ** 2))
+        labels[i] = np.argmin(d)
     while True:
-        mu_old = copy.deepcopy(mu)
-        labels = []
+        for k in range(K):
+            x1 = 0.0
+            x2 = 0.0
+            cnt = 0
+            for i in range(len(X)):
+                if labels[i] == k:
+                    x1 += X[i][0]
+                    x2 += X[i][1]
+                    cnt += 1
+            mu[k][0] = x1 / float(cnt)
+            mu[k][1] = x2 / float(cnt)
+
+        labels_old = copy.deepcopy(labels)
+
         for i in range(len(X)):
             d = []
-            for j in range(K):
-                d.append(np.sqrt((X1[i] - mu[j][0])**2 + (X2[i] - mu[j][1])**2))
-            d = np.array(d)
-            labels.append(np.argmin(d))
+            for k in range(K):
+                d.append( np.sqrt( (X[i][0]-mu[k][0])**2 + (X[i][1]-mu[k][1])**2 ) )
+            labels[i] = np.argmin(d)
 
-        for j in range(K):
-            d_sum = 0.0
-            X1_u_sum = 0.0
-            X2_u_sum = 0.0
-            for i in range(len(X)):
-                if labels[i] == j:
-                    d_sum += 1.0
-                    X1_u_sum += X1[i]
-                    X2_u_sum += X2[i]
-
-            mu[j][0] = X1_u_sum / d_sum
-            mu[j][1] = X2_u_sum / d_sum
-
-        if np.allclose(mu, mu_old):
+        if np.array_equal(labels, labels_old):
             break
 
     return (mu, sigma, pi)
 
 
 def expected_complete_LL(X, R, K, theta):
-    ll = 0.0
+    ll = 0
     mu, sigma, pi = theta
 
+    a = 0.0
+    b = 0.0
     for i in range(len(X)):
         for k in range(K):
-            ll += np.log(pi[k] * gaussian(mu[k], sigma[k], X[i]))
-
+            a += R[i][k] * np.log(pi[k])
+            b += R[i][k] * np.log(gaussian(mu[k], sigma[k], X[i]))
+    ll = a + b
     return ll
 
 
@@ -109,6 +114,7 @@ def expect(X, theta):
     # unpack
     mu, sigma, pi = theta
     R = []
+
     K = len(mu)
 
     for i in range(len(X)):
@@ -117,6 +123,7 @@ def expect(X, theta):
             tmp.append((pi[k] * gaussian(mu[k], sigma[k], X[i])) \
                        / sum([pi[k_] * gaussian(mu[k_], sigma[k_], X[i]) for k_ in range(K)]))
         R.append(tmp)
+
     return np.array(R)
 
 
@@ -126,29 +133,32 @@ def maximize(X, R, K):
     pi = []
 
     N = len(X)
+
     for k in range(K):
-        sum_R = sum(R[:, k])
-        pi.append(sum_R / N)
+        sum_rik = 0.0
+        sum_rikx = np.zeros(2)
+        for i in range(N):
+            sum_rik += R[i][k]
+            sum_rikx += R[i][k] * X[i]
 
-        sum_RX1 = np.dot(np.array(R[:, k]), np.array(X[:, 0]))
-        sum_RX2 = np.dot(np.array(R[:, k]), np.array(X[:, 1]))
+        pi.append(sum_rik/N)
+        mu.append(list(sum_rikx/sum_rik))
 
-        mu.append([sum_RX1 / sum_R, sum_RX2 / sum_R])
-
-        sum_RX1M = np.sum(np.dot(np.dot(np.array(R[:, k]), np.array(X[:, 0])), np.array(X[:, 0]).T))
-        sum_RX2M = np.sum(np.dot(np.dot(np.array(R[:, k]), np.array(X[:, 1])), np.array(X[:, 1]).T))
-
-        sigma.append([(sum_RX1M / sum_R) - (np.array(mu[k])*np.array(mu[k]).T),
-                      (sum_RX2M / sum_R) - (np.array(mu[k])*np.array(mu[k]).T)])
+    for k in range(K):
+        _sum = np.zeros((2, 2))
+        for i in range(N):
+            x = np.array(X[i]).reshape(2, 1)
+            u = np.array(mu[k]).reshape(2, 1)
+            _sum += R[i][k] * np.dot(x - u, (x - u).T)
+        sigma.append(_sum / sum(R[:, k]))
 
     return (np.array(mu), np.array(sigma), np.array(pi))
 
 
 def EM(X, K, init_theta):
     LL = 0
-    theta = copy.deepcopy(init_theta)
 
-    theta = kmeans(X, theta)
+    theta = copy.deepcopy(init_theta)
 
     while True:
         LL_old = copy.deepcopy(LL)
@@ -159,28 +169,32 @@ def EM(X, K, init_theta):
         if np.abs(LL - LL_old) < 0.1:
             break
 
-    return LL
+    return LL, theta, R
 
 
 def find_best_k(X):
-    LLs = []
-    thetas = []
-    Rs = []
-    Ks = []
+    best_LL = []
+    best_theta = []
+    best_K = []
+    best_R = []
 
-    for K in range(2, 5):
-        theta = get_initial_random_state(X, K)
-        LL, theta, R = EM(X, K, theta)
-        LLs.append(LL)
-        thetas.append(theta)
-        Rs.append(R)
-        Ks.append(K)
+    for K in range(2, 8):
+        init_theta = get_initial_random_state(X, K)
+        init_theta = kmeans(X, init_theta)
+        LL, theta, R = EM(X, K, init_theta)
+        print(LL)
+        best_LL.append(LL)
+        best_K.append(K)
+        best_R.append(R)
+        best_theta.append(theta)
 
-    argmax = np.argmax(np.array(LLs))
-    best_K = Ks[argmax]
-    best_theta = thetas[argmax]
-    best_LL = LLs[argmax]
-    best_R = Rs[argmax]
+    argmax = np.argmax(np.array(best_LL))
+    best_LL = best_LL[argmax]
+    best_theta = best_theta[argmax]
+    best_R = best_R[argmax]
+    best_K = best_K[argmax]
+    # print(best_K)
+
     return best_K, best_theta, best_LL, best_R
 
 
@@ -200,7 +214,7 @@ def draw_dataset(X, R):
     plt.gca().spines['right'].set_visible(False)
     plt.gca().spines['bottom'].set_color('#999999')
     plt.gca().spines['left'].set_color('#999999')
-    plt.xlabel('x1', fontsize=20, color='#555555')
+    plt.xlabel('x1', fontsize=20, color='#555555');
     plt.ylabel('x2', fontsize=20, color='#555555')
     plt.tick_params(axis='x', colors='#777777')
     plt.tick_params(axis='y', colors='#777777')
